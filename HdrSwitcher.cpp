@@ -2,10 +2,10 @@
 
 #include <exception>
 #include <format>
+#include <iostream>
 #include <source_location>
 #include <string>
 #include <vector>
-#include <iostream>
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig#examples
 
@@ -124,6 +124,24 @@ DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO GetAdvancedColorInfo(LUID adapterId,
   return colorInfo;
 }
 
+void SetAdvancedColorInfo(LUID adapterId,
+                          UINT32 id,
+                          bool advancedColorEnabled) {
+  DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setColorState{};
+  setColorState.header.type =
+      DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE;
+  setColorState.header.size = sizeof(DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE);
+  setColorState.header.adapterId = adapterId;
+  setColorState.header.id = id;
+  setColorState.enableAdvancedColor = advancedColorEnabled ? TRUE : FALSE;
+
+  auto err = ::DisplayConfigSetDeviceInfo(
+      (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&setColorState);
+  if (err != ERROR_SUCCESS) {
+    ThrowWinErr("DisplayConfigSetDeviceInfo failed with error", err);
+  }
+}
+
 void PrintMonitorInfo(LUID adapterId, UINT32 id) {
   DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = GetDisplayName(adapterId, id);
 
@@ -161,47 +179,32 @@ void ChangeHDR(Operation oper) {
 
   // Get the first display's adapter ID and source ID
   LUID adapterId = pathArray.at(0).targetInfo.adapterId;
-  UINT32 sourceId = pathArray.at(0).targetInfo.id;
-
-  PrintMonitorInfo(adapterId, sourceId);
+  UINT32 targetId = pathArray.at(0).targetInfo.id;
+  PrintMonitorInfo(adapterId, targetId);
 
   // Get the current advanced color info of the first display
-  auto getColorInfo = GetAdvancedColorInfo(adapterId, sourceId);
+  auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
 
   // Check if the display supports HDR
   if (!getColorInfo.advancedColorSupported) {
     throw std::runtime_error("The display does not support HDR");
   }
 
-  // Set the advanced color state to enable HDR
-  DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setColorState{};
-  setColorState.header.type =
-      DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE;
-  setColorState.header.size = sizeof(DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE);
-  setColorState.header.adapterId = adapterId;
-  setColorState.header.id = sourceId;
+  bool enableAdvancedColor = [&] {
+    switch (oper) {
+      case Operation::enable:
+        return true;
+      case Operation::disable:
+        return false;
+      case Operation::toggle:
+        return getColorInfo.advancedColorEnabled == FALSE;
+    }
+  }();
 
-  switch (oper) {
-    case Operation::enable:
-      setColorState.enableAdvancedColor = TRUE;
-      break;
-    case Operation::disable:
-      setColorState.enableAdvancedColor = TRUE;
-      break;
-    case Operation::toggle:
-      setColorState.enableAdvancedColor =
-          (getColorInfo.advancedColorEnabled == FALSE);
-      break;
-  }
+  // Set the advanced color state to enable/disable HDR
+  SetAdvancedColorInfo(adapterId, targetId, enableAdvancedColor);
 
-  auto err = ::DisplayConfigSetDeviceInfo(
-      (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&setColorState);
-  if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigSetDeviceInfo failed with error", err);
-  }
-
-  // HDR is now enabled for the first display
-  if (setColorState.enableAdvancedColor) {
+  if (enableAdvancedColor) {
     std::wcout << L"HDR is enabled for the first display" << std::endl;
   } else {
     std::wcout << L"HDR is disabled for the first display" << std::endl;
