@@ -8,9 +8,24 @@ endif()
 
 project ("HdrSwitcher")
 
+# Fetch CLI11
+
+include(FetchContent)
+
+FetchContent_Declare(
+  cli11
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG v2.1.2 # Replace with the desired version
+)
+
+FetchContent_MakeAvailable(cli11)
+
+# Fetch CLI11 End
+
 # Add source to this project's executable.
 add_executable (HdrSwitcher 
 	"HdrSwitcher.cpp"
 	)
 
 set_property(TARGET HdrSwitcher PROPERTY CXX_STANDARD 20)
+target_link_libraries(HdrSwitcher PRIVATE CLI11::CLI11)

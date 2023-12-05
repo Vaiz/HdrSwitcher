@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <CLI/CLI.hpp>
+
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig#examples
 
 [[noreturn]] void ThrowWinErr(
@@ -142,7 +144,7 @@ void SetAdvancedColorInfo(LUID adapterId,
   }
 }
 
-void PrintMonitorInfo(LUID adapterId, UINT32 id) {
+void PrintDisplayInfo(LUID adapterId, UINT32 id) {
   DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = GetDisplayName(adapterId, id);
 
   // Find the adapter device name
@@ -159,12 +161,12 @@ void PrintMonitorInfo(LUID adapterId, UINT32 id) {
   std::wcout << L"Adapter path: " << adapterName.adapterDevicePath << L"\n";
 }
 
-void PrintMonitors() {
+void ListDisplays() {
   const auto paths = QueryDisplayConfigImpl();
 
   // For each active path
   for (auto& path : paths) {
-    PrintMonitorInfo(path.targetInfo.adapterId, path.targetInfo.id);
+    PrintDisplayInfo(path.targetInfo.adapterId, path.targetInfo.id);
   }
 }
 
@@ -180,7 +182,7 @@ void ChangeHDR(Operation oper) {
   // Get the first display's adapter ID and source ID
   LUID adapterId = pathArray.at(0).targetInfo.adapterId;
   UINT32 targetId = pathArray.at(0).targetInfo.id;
-  PrintMonitorInfo(adapterId, targetId);
+  PrintDisplayInfo(adapterId, targetId);
 
   // Get the current advanced color info of the first display
   auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
@@ -199,6 +201,7 @@ void ChangeHDR(Operation oper) {
       case Operation::toggle:
         return getColorInfo.advancedColorEnabled == FALSE;
     }
+    unreachable();
   }();
 
   // Set the advanced color state to enable/disable HDR
@@ -211,19 +214,24 @@ void ChangeHDR(Operation oper) {
   }
 }
 
-int main(int argc, wchar_t* argv) {
+int main(int argc, char** argv) {
   try {
-    if (argc == 1) {
-      ChangeHDR(Operation::toggle);
-      return 0;
-    }
-    /*
-    if (argv[1] == L"list"sv) {
-      PrintMonitors();
-    } else if (argv[1] == L"enable") {
+    CLI::App app{"HDRSwitcher"};
+    app.require_subcommand(1);
+
+    app.add_subcommand("list", "List available displays")
+        ->callback(ListDisplays);
+    app.add_subcommand("enable", "Enable HDR")->callback([] {
       ChangeHDR(Operation::enable);
-    }
-    */
+    });
+    app.add_subcommand("disable", "Disable HDR")->callback([] {
+      ChangeHDR(Operation::disable);
+    });
+    app.add_subcommand("toggle", "Toggle HDR settings")->callback([] {
+      ChangeHDR(Operation::toggle);
+    });
+
+    CLI11_PARSE(app, argc, argv);
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return -1;
