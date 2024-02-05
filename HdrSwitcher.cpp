@@ -7,7 +7,14 @@
 #include <string>
 #include <vector>
 
-#include <CLI/CLI.hpp>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
+#include <cxxopts.hpp>
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig#examples
 
@@ -229,24 +236,33 @@ void ChangeHDR(Operation oper) {
 
 int main(int argc, char** argv) {
   try {
-    CLI::App app{"HDRSwitcher"};
-    app.require_subcommand(1);
+    cxxopts::options options(
+        "HDRSwitcher", "Contol HDR settings on Windows via command line ");
 
-    app.add_subcommand("list", "List available displays")
-        ->callback(ListDisplays);
-    app.add_subcommand("status", "Print current display's mode")
-        ->callback(PrintDisplayMode);
-    app.add_subcommand("enable", "Enable HDR")->callback([] {
+    options.add_options({}, {{"h,help", "Print usage"},
+                             {"list", "List available displays"},
+                             {"status", "Print current display's mode"},
+                             {"enable", "Enable HDR"},
+                             {"disable", "Disable HDR"},
+                             {"toggle", "Toggle HDR settings"}});
+
+    auto result = options.parse(argc, argv);
+
+    if (result.count("help")) {
+      std::cout << options.help() << std::endl;
+    } else if (result.count("list")) {
+      ListDisplays();
+    } else if (result.count("status")) {
+      PrintDisplayMode();
+    } else if (result.count("enable")) {
       ChangeHDR(Operation::enable);
-    });
-    app.add_subcommand("disable", "Disable HDR")->callback([] {
+    } else if (result.count("disable")) {
       ChangeHDR(Operation::disable);
-    });
-    app.add_subcommand("toggle", "Toggle HDR settings")->callback([] {
+    } else if (result.count("toggle")) {
       ChangeHDR(Operation::toggle);
-    });
-
-    CLI11_PARSE(app, argc, argv);
+    } else {
+      std::cout << options.help() << std::endl;
+    }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return -1;

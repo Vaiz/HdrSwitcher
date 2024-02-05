@@ -13,19 +13,19 @@ project ("HdrSwitcher")
 # Release build settings
 set(CMAKE_CXX_FLAGS_RELEASE "/O1")
 
-# Fetch CLI11
+# Fetch cxxopts
 
 include(FetchContent)
 
 FetchContent_Declare(
-  cli11
-  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.1.2 # Replace with the desired version
+  cxxopts
+  GIT_REPOSITORY https://github.com/artpaul/cxxopts.git
+  GIT_TAG 5.3.0 # Replace with the desired version
 )
 
-FetchContent_MakeAvailable(cli11)
+FetchContent_MakeAvailable(cxxopts)
 
-# Fetch CLI11 End
+# Fetch cxxopts End
 
 # Add source to this project's executable.
 add_executable (HdrSwitcher 
@@ -33,4 +33,4 @@ add_executable (HdrSwitcher
 	)
 
 set_property(TARGET HdrSwitcher PROPERTY CXX_STANDARD 20)
-target_link_libraries(HdrSwitcher PRIVATE CLI11::CLI11)
+target_link_libraries(HdrSwitcher PRIVATE cxxopts::cxxopts)
