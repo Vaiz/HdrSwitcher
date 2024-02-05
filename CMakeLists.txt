@@ -1,5 +1,7 @@
 ﻿cmake_minimum_required (VERSION 3.20)
 
+message("Current build mode: ${CMAKE_BUILD_TYPE}")
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -7,6 +9,9 @@ if (POLICY CMP0141)
 endif()
 
 project ("HdrSwitcher")
+
+# Release build settings
+set(CMAKE_CXX_FLAGS_RELEASE "/O1")
 
 # Fetch CLI11
 

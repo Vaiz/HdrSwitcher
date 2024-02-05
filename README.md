@@ -8,6 +8,7 @@ This application provides a command-line interface for managing High Dynamic Ran
 - **Enable HDR**: Activates HDR on supported displays.
 - **Disable HDR**: Deactivates HDR.
 - **Toggle HDR**: Switches HDR state between on and off.
+- **Status**: Reports whether HDR or SDR is currently enabled.
 
 ## Limitation
 Currently, the program operates only on the first display returned by the system. Future updates may include support for multiple displays.
@@ -23,3 +24,4 @@ To download the latest version of the HDR Control Application, visit the release
 - `HdrSwitcher.exe enable` - Enables HDR.
 - `HdrSwitcher.exe disable` - Disables HDR.
 - `HdrSwitcher.exe toggle` - Toggles HDR.
+- `HdrSwitcher.exe status` - Shows current mode.

@@ -170,6 +170,19 @@ void ListDisplays() {
   }
 }
 
+void PrintDisplayMode() {
+  auto pathArray = QueryDisplayConfigImpl();
+
+  // Get the first display's adapter ID and source ID
+  LUID adapterId = pathArray.at(0).targetInfo.adapterId;
+  UINT32 targetId = pathArray.at(0).targetInfo.id;
+
+  // Get the current advanced color info of the first display
+  auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
+
+  std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR");
+}
+
 enum class Operation {
   enable,
   disable,
@@ -221,6 +234,8 @@ int main(int argc, char** argv) {
 
     app.add_subcommand("list", "List available displays")
         ->callback(ListDisplays);
+    app.add_subcommand("status", "Print current display's mode")
+        ->callback(PrintDisplayMode);
     app.add_subcommand("enable", "Enable HDR")->callback([] {
       ChangeHDR(Operation::enable);
     });
