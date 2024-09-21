@@ -10,9 +10,6 @@ This application provides a command-line interface for managing High Dynamic Ran
 - **Toggle HDR**: Switches HDR state between on and off.
 - **Status**: Reports whether HDR or SDR is currently enabled.
 
-## Limitation
-Currently, the program operates only on the first display returned by the system. Future updates may include support for multiple displays.
-
 ## Building the Application
 Run `build.bat` to compile the application for a release build using CMake.
 
@@ -21,7 +18,10 @@ To download the latest version of the HDR Control Application, visit the release
 
 ## Usage
 - `HdrSwitcher.exe list` - Lists displays.
-- `HdrSwitcher.exe enable` - Enables HDR.
-- `HdrSwitcher.exe disable` - Disables HDR.
-- `HdrSwitcher.exe toggle` - Toggles HDR.
-- `HdrSwitcher.exe status` - Shows current mode.
+- `HdrSwitcher.exe enable  [[--all]|[--index <i>]|[--id <id>]|[--name <name>]]` - Enables HDR.
+- `HdrSwitcher.exe disable [[--all]|[--index <i>]|[--id <id>]|[--name <name>]]` - Disables HDR.
+- `HdrSwitcher.exe toggle  [[--all]|[--index <i>]|[--id <id>]|[--name <name>]]` - Toggles HDR.
+- `HdrSwitcher.exe status  [[--all]|[--index <i>]|[--id <id>]|[--name <name>]]` - Shows current mode.
+- `HdrSwitcher.exe --help` - Shows help.
+- `HdrSwitcher.exe <command> --help` - Shows help for specific command.
+
