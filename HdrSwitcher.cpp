@@ -11,12 +11,16 @@
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig#examples
 
+template <typename T>
+using vec = std::vector<T>;
+using std::format;
+
 [[noreturn]] void ThrowWinErr(
     std::string_view message,
     HRESULT errCode,
     std::source_location src = std::source_location::current()) {
-  throw std::runtime_error(std::format("{}. Error code: {}, Line: {}", message,
-                                       errCode, src.line()));
+  throw std::runtime_error(
+      format("{}. Error code: {}, Line: {}", message, errCode, src.line()));
 }
 
 [[noreturn]] inline void unreachable() {
@@ -27,12 +31,12 @@
 }
 
 std::wstring FormatLUID(LUID luid) {
-  return std::format(L"{:016x}-{:08x}", luid.HighPart, luid.LowPart);
+  return format(L"{:016x}-{:08x}", luid.HighPart, luid.LowPart);
 }
 
-std::vector<DISPLAYCONFIG_PATH_INFO> QueryDisplayConfigImpl() {
-  std::vector<DISPLAYCONFIG_PATH_INFO> paths;
-  std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+vec<DISPLAYCONFIG_PATH_INFO> QueryDisplayConfigImpl() {
+  vec<DISPLAYCONFIG_PATH_INFO> paths;
+  vec<DISPLAYCONFIG_MODE_INFO> modes;
   constexpr UINT32 flags = QDC_ONLY_ACTIVE_PATHS | QDC_VIRTUAL_MODE_AWARE;
   LONG result = ERROR_SUCCESS;
 
