@@ -110,20 +110,15 @@ void add_filters(argparse::ArgumentParser& app) {
 std::unique_ptr<IFilter> InitFilter(
     const argparse::ArgumentParser& subcommand) {
   if (subcommand.is_used("all")) {
-    std::cout << "ALL" << std::endl;
     return std::make_unique<AllFilter>();
   } else if (subcommand.is_used("index")) {
-    std::cout << "index" << std::endl;
     return std::make_unique<IndexFilter>(subcommand.get<size_t>("index"));
   } else if (subcommand.is_used("id")) {
-    std::cout << "id" << std::endl;
     return std::make_unique<TargetIdFilter>(subcommand.get<uint32_t>("id"));
   } else if (subcommand.is_used("name")) {
-    std::cout << "name" << std::endl;
     return std::make_unique<DisplayNameFilter>(
         subcommand.get<std::string>("name"));
   } else {
-    std::cout << "Default" << std::endl;
     return std::make_unique<IndexFilter>(0);
   }
 }
