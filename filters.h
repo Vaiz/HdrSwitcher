@@ -55,7 +55,7 @@ struct TargetIdFilter final : IFilter {
 struct DisplayNameFilter final : IFilter {
   std::string displayName;
 
-  DisplayNameFilter(std::string displayName) : displayName(displayName) {}
+  DisplayNameFilter(std::string displayName) : displayName(to_upper(displayName)) {}
 
   vec<DISPLAYCONFIG_PATH_INFO> Apply(
       vec<DISPLAYCONFIG_PATH_INFO> displays) const {
@@ -65,7 +65,7 @@ struct DisplayNameFilter final : IFilter {
           auto name = GetDisplayName(display.targetInfo.adapterId,
                                      display.targetInfo.id);
 
-          return to_utf8(name.monitorFriendlyDeviceName) == displayName;
+          return to_upper(to_utf8(name.monitorFriendlyDeviceName)) == displayName;
         });
 
     if (view.empty()) {

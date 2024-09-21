@@ -1,6 +1,7 @@
 #pragma once
 #include <Windows.h>
 
+#include <algorithm>
 #include <codecvt>
 #include <exception>
 #include <format>
@@ -24,6 +25,12 @@ using std::format;
 std::string to_utf8(const wchar_t* wstr) {
   std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
   return converter.to_bytes(wstr);
+}
+
+std::string to_upper(std::string str) {
+  std::transform(str.begin(), str.end(), str.begin(),
+                 [](char c) -> char { return std::toupper(c); });
+  return str;
 }
 
 [[noreturn]] void ThrowWinErr(
