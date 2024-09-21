@@ -19,6 +19,7 @@ void PrintDisplayInfo(LUID adapterId, UINT32 id) {
 
   std::wcout << L"Adapter ID  : " << FormatLUID(adapterId) << L"\n";
   std::wcout << L"Adapter path: " << adapterName.adapterDevicePath << L"\n";
+  std::wcout << std::endl;
 }
 
 void ListDisplays() {
@@ -41,7 +42,7 @@ void PrintDisplayMode(std::unique_ptr<IFilter> filter) {
     // Get the current advanced color info of the display
     auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
 
-    std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR");
+    std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR") << std::endl;
   }
 }
 
