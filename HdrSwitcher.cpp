@@ -1,153 +1,8 @@
-﻿#include <Windows.h>
+﻿#include "filters.h"
+#include "util.h"
+#include "winapi.h"
 
-#include <exception>
-#include <format>
-#include <iostream>
-#include <source_location>
-#include <string>
-#include <vector>
-#include <ranges>
-
-#include <CLI/CLI.hpp>
-
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-querydisplayconfig#examples
-
-template <typename T>
-using vec = std::vector<T>;
-using std::format;
-
-[[noreturn]] void ThrowWinErr(
-    std::string_view message,
-    HRESULT errCode,
-    std::source_location src = std::source_location::current()) {
-  throw std::runtime_error(
-      format("{}. Error code: {}, Line: {}", message, errCode, src.line()));
-}
-
-[[noreturn]] inline void unreachable() {
-  // Uses compiler specific extensions if possible.
-  // Even if no extension is used, undefined behavior is still raised by
-  // an empty function body and the noreturn attribute.
-  __assume(false);
-}
-
-std::wstring FormatLUID(LUID luid) {
-  return format(L"{:016x}-{:08x}", luid.HighPart, luid.LowPart);
-}
-
-vec<DISPLAYCONFIG_PATH_INFO> QueryDisplayConfigImpl() {
-  vec<DISPLAYCONFIG_PATH_INFO> paths;
-  vec<DISPLAYCONFIG_MODE_INFO> modes;
-  constexpr UINT32 flags = QDC_ONLY_ACTIVE_PATHS | QDC_VIRTUAL_MODE_AWARE;
-  LONG result = ERROR_SUCCESS;
-
-  while (true) {
-    // Determine how many path and mode structures to allocate
-    UINT32 pathCount, modeCount;
-    result = ::GetDisplayConfigBufferSizes(flags, &pathCount, &modeCount);
-
-    if (result != ERROR_SUCCESS) {
-      ThrowWinErr("GetDisplayConfigBufferSizes returned an error",
-                  HRESULT_FROM_WIN32(result));
-    }
-
-    // Allocate the path and mode arrays
-    paths.resize(pathCount);
-    modes.resize(modeCount);
-
-    // Get all active paths and their modes
-    result = ::QueryDisplayConfig(flags, &pathCount, paths.data(), &modeCount,
-                                  modes.data(), nullptr);
-
-    // The function may have returned fewer paths/modes than estimated
-    paths.resize(pathCount);
-    modes.resize(modeCount);
-
-    switch (result) {
-      case ERROR_SUCCESS:
-        return paths;
-
-      // It's possible that between the call to GetDisplayConfigBufferSizes and
-      // QueryDisplayConfig that the display state changed, so loop on the case
-      // of ERROR_INSUFFICIENT_BUFFER.
-      case ERROR_INSUFFICIENT_BUFFER:
-        continue;
-
-      default:
-        ThrowWinErr("QueryDisplayConfig returned an error",
-                    HRESULT_FROM_WIN32(result));
-    }
-  }
-
-  unreachable();
-}
-
-DISPLAYCONFIG_TARGET_DEVICE_NAME GetDisplayName(LUID adapterId, UINT32 id) {
-  DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = {};
-  targetName.header.adapterId = adapterId;
-  targetName.header.id = id;
-  targetName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
-  targetName.header.size = sizeof(targetName);
-  auto result = ::DisplayConfigGetDeviceInfo(&targetName.header);
-
-  if (result != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigGetDeviceInfo returned an error",
-                HRESULT_FROM_WIN32(result));
-  }
-
-  return targetName;
-}
-
-DISPLAYCONFIG_ADAPTER_NAME GetAdapterName(LUID adapterId) {
-  DISPLAYCONFIG_ADAPTER_NAME adapterName = {};
-  adapterName.header.adapterId = adapterId;
-  adapterName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADAPTER_NAME;
-  adapterName.header.size = sizeof(adapterName);
-
-  auto result = ::DisplayConfigGetDeviceInfo(&adapterName.header);
-
-  if (result != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigGetDeviceInfo returned an error",
-                HRESULT_FROM_WIN32(result));
-  }
-
-  return adapterName;
-}
-
-DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO GetAdvancedColorInfo(LUID adapterId,
-                                                           UINT32 id) {
-  DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO colorInfo = {};
-  colorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
-  colorInfo.header.size = sizeof(colorInfo);
-  colorInfo.header.adapterId = adapterId;
-  colorInfo.header.id = id;
-  auto err = ::DisplayConfigGetDeviceInfo(
-      (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&colorInfo);
-  if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigGetDeviceInfo failed with error. ",
-                HRESULT_FROM_WIN32(err));
-  }
-
-  return colorInfo;
-}
-
-void SetAdvancedColorInfo(LUID adapterId,
-                          UINT32 id,
-                          bool advancedColorEnabled) {
-  DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setColorState{};
-  setColorState.header.type =
-      DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE;
-  setColorState.header.size = sizeof(DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE);
-  setColorState.header.adapterId = adapterId;
-  setColorState.header.id = id;
-  setColorState.enableAdvancedColor = advancedColorEnabled ? TRUE : FALSE;
-
-  auto err = ::DisplayConfigSetDeviceInfo(
-      (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&setColorState);
-  if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigSetDeviceInfo failed with error", err);
-  }
-}
+#include <argparse/argparse.hpp>
 
 void PrintDisplayInfo(LUID adapterId, UINT32 id) {
   DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = GetDisplayName(adapterId, id);
@@ -175,86 +30,20 @@ void ListDisplays() {
   }
 }
 
-void PrintDisplayMode() {
+void PrintDisplayMode(std::unique_ptr<IFilter> filter) {
   auto pathArray = QueryDisplayConfigImpl();
+  pathArray = filter->Apply(pathArray);
 
-  // Get the first display's adapter ID and source ID
-  LUID adapterId = pathArray.at(0).targetInfo.adapterId;
-  UINT32 targetId = pathArray.at(0).targetInfo.id;
+  for (const auto& display : pathArray) {
+    LUID adapterId = display.targetInfo.adapterId;
+    UINT32 targetId = display.targetInfo.id;
 
-  // Get the current advanced color info of the first display
-  auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
+    // Get the current advanced color info of the display
+    auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
 
-  std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR");
+    std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR");
+  }
 }
-
-struct IFilter {
-  virtual ~IFilter() = default;
-  virtual vec<DISPLAYCONFIG_PATH_INFO> filter(
-      vec<DISPLAYCONFIG_PATH_INFO> displays) const = 0;
-};
-
-struct AllFilter final : IFilter {
-  vec<DISPLAYCONFIG_PATH_INFO> filter(
-      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
-    return displays;
-  }
-};
-
-struct IndexFilter final : IFilter {
-  size_t index;
-
-  vec<DISPLAYCONFIG_PATH_INFO> filter(
-      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
-    if (displays.size() < index) {
-      throw std::logic_error(format(
-          "Cannot find display with index {}. There are only {} displays",
-          index, displays.size()));
-    }
-
-    return {displays.at(index)};
-  }
-};
-
-struct TargetIdFilter final : IFilter {
-  uint32_t targetId;
-
-  vec<DISPLAYCONFIG_PATH_INFO> filter(
-      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
-    auto iter = std::ranges::find_if(
-        displays, [this](const DISPLAYCONFIG_PATH_INFO& display) {
-          return display.targetInfo.id == targetId;
-        });
-
-    if (displays.end() == iter) {
-      throw std::logic_error(format(
-          "Cannot find display with target id {}",
-          targetId));
-    }
-
-    return { *iter };
-  }
-};
-
-struct DisplayNameFilter final : IFilter {
-  std::wstring displayName;
-
-  vec<DISPLAYCONFIG_PATH_INFO> filter(
-      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
-
-    auto view = displays | std::views::filter([this](const DISPLAYCONFIG_PATH_INFO& display) {
-          auto name = GetDisplayName(display.targetInfo.adapterId, display.targetInfo.id);
-          return name.monitorFriendlyDeviceName == displayName;
-        });
-
-    if (view.empty()) {
-      throw std::logic_error(
-          format("Cannot find display with name [{}]", displayName));
-    }
-
-    return vec<DISPLAYCONFIG_PATH_INFO>(view.begin(), view.end());
-  }
-};
 
 enum class Operation {
   enable,
@@ -262,69 +51,126 @@ enum class Operation {
   toggle,
 };
 
-void ChangeHDR(Operation oper) {
+void ChangeHDR(Operation oper, std::unique_ptr<IFilter> filter) {
   auto pathArray = QueryDisplayConfigImpl();
+  pathArray = filter->Apply(pathArray);
 
-  // Get the first display's adapter ID and source ID
-  LUID adapterId = pathArray.at(0).targetInfo.adapterId;
-  UINT32 targetId = pathArray.at(0).targetInfo.id;
-  PrintDisplayInfo(adapterId, targetId);
+  for (const auto& display : pathArray) {
+    LUID adapterId = display.targetInfo.adapterId;
+    UINT32 targetId = display.targetInfo.id;
+    PrintDisplayInfo(adapterId, targetId);
 
-  // Get the current advanced color info of the first display
-  auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
+    // Get the current advanced color info of the display
+    auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
 
-  // Check if the display supports HDR
-  if (!getColorInfo.advancedColorSupported) {
-    throw std::runtime_error("The display does not support HDR");
-  }
-
-  bool enableAdvancedColor = [&] {
-    switch (oper) {
-      case Operation::enable:
-        return true;
-      case Operation::disable:
-        return false;
-      case Operation::toggle:
-        return getColorInfo.advancedColorEnabled == FALSE;
+    // Check if the display supports HDR
+    if (!getColorInfo.advancedColorSupported) {
+      throw std::runtime_error("The display does not support HDR");
     }
-    unreachable();
-  }();
 
-  // Set the advanced color state to enable/disable HDR
-  SetAdvancedColorInfo(adapterId, targetId, enableAdvancedColor);
+    bool enableAdvancedColor = [&] {
+      switch (oper) {
+        case Operation::enable:
+          return true;
+        case Operation::disable:
+          return false;
+        case Operation::toggle:
+          return getColorInfo.advancedColorEnabled == FALSE;
+      }
+      unreachable();
+    }();
 
-  if (enableAdvancedColor) {
-    std::wcout << L"HDR is enabled for the first display" << std::endl;
+    // Set the advanced color state to enable/disable HDR
+    SetAdvancedColorInfo(adapterId, targetId, enableAdvancedColor);
+
+    if (enableAdvancedColor) {
+      std::wcout << L"HDR is enabled for display with id " << targetId
+                 << std::endl;
+    } else {
+      std::wcout << L"HDR is disabled for display with id " << targetId
+                 << std::endl;
+    }
+  }
+}
+
+void add_filters(argparse::ArgumentParser& app) {
+  auto& group = app.add_mutually_exclusive_group();
+  group.add_argument("--all")
+      .help("Apply to all displays")
+      .default_value(false)
+      .implicit_value(true);
+  group.add_argument("--index").scan<'i', size_t>().help(
+      "Choose display by its index received from `list` command. The first "
+      "index is 0");
+  group.add_argument("--id").scan<'i', uint32_t>().help(
+      "Choose display by its id received from `list` command");
+  group.add_argument("--name").help(
+      "Choose display by its name received from `list` command");
+}
+std::unique_ptr<IFilter> InitFilter(
+    const argparse::ArgumentParser& subcommand) {
+  if (subcommand.is_used("all")) {
+    std::cout << "ALL" << std::endl;
+    return std::make_unique<AllFilter>();
+  } else if (subcommand.is_used("index")) {
+    std::cout << "index" << std::endl;
+    return std::make_unique<IndexFilter>(subcommand.get<size_t>("index"));
+  } else if (subcommand.is_used("id")) {
+    std::cout << "id" << std::endl;
+    return std::make_unique<TargetIdFilter>(subcommand.get<uint32_t>("id"));
+  } else if (subcommand.is_used("name")) {
+    std::cout << "name" << std::endl;
+    return std::make_unique<DisplayNameFilter>(
+        subcommand.get<std::string>("name"));
   } else {
-    std::wcout << L"HDR is disabled for the first display" << std::endl;
+    std::cout << "Default" << std::endl;
+    return std::make_unique<IndexFilter>(0);
   }
 }
 
 int main(int argc, char** argv) {
   try {
-    CLI::App app{"HDRSwitcher"};
-    app.require_subcommand(1);
+    argparse::ArgumentParser program("HDRSwitcher", "1.2");
 
-    app.add_subcommand("list", "List available displays")
-        ->callback(ListDisplays);
-    app.add_subcommand("status", "Print current display's mode")
-        ->callback(PrintDisplayMode);
-    app.add_subcommand("enable", "Enable HDR")->callback([] {
-      ChangeHDR(Operation::enable);
-    });
-    app.add_subcommand("disable", "Disable HDR")->callback([] {
-      ChangeHDR(Operation::disable);
-    });
-    app.add_subcommand("toggle", "Toggle HDR settings")->callback([] {
-      ChangeHDR(Operation::toggle);
-    });
-    app.add_flag("all", "Apply to all displays");
-    app.add_option("index", "Choose display by its index received from `list` command");
-    app.add_option("id", "Choose display by its id received from `list` command");
-    app.add_option("name",
-                   "Choose display by its name received from `list` command");
+    argparse::ArgumentParser list_command("list");
+    list_command.add_description("List available displays");
+    program.add_subparser(list_command);
 
-    CLI11_PARSE(app, argc, argv);
+    argparse::ArgumentParser status_command("status");
+    status_command.add_description("Print current display's mode");
+    add_filters(status_command);
+    program.add_subparser(status_command);
+
+    argparse::ArgumentParser enable_command("enable");
+    enable_command.add_description("Enable HDR");
+    add_filters(enable_command);
+    program.add_subparser(enable_command);
+
+    argparse::ArgumentParser disable_command("disable");
+    disable_command.add_description("Disable HDR");
+    add_filters(disable_command);
+    program.add_subparser(disable_command);
+
+    argparse::ArgumentParser toggle_command("toggle");
+    toggle_command.add_description("Toggle HDR settings");
+    add_filters(toggle_command);
+    program.add_subparser(toggle_command);
+
+    program.parse_args(argc, argv);
+
+    if (program.is_subcommand_used(list_command)) {
+      ListDisplays();
+    } else if (program.is_subcommand_used(status_command)) {
+      PrintDisplayMode(InitFilter(status_command));
+    } else if (program.is_subcommand_used(enable_command)) {
+      ChangeHDR(Operation::enable, InitFilter(enable_command));
+    } else if (program.is_subcommand_used(disable_command)) {
+      ChangeHDR(Operation::disable, InitFilter(disable_command));
+    } else if (program.is_subcommand_used(toggle_command)) {
+      ChangeHDR(Operation::toggle, InitFilter(toggle_command));
+    } else {
+      std::cout << program.usage() << std::endl;
+    }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return -1;

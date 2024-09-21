@@ -13,24 +13,22 @@ project ("HdrSwitcher")
 # Release build settings
 set(CMAKE_CXX_FLAGS_RELEASE "/O1")
 
-# Fetch CLI11
-
+# Fetch
 include(FetchContent)
 
 FetchContent_Declare(
-  cli11
-  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.1.2 # Replace with the desired version
+  argparse
+  GIT_REPOSITORY https://github.com/p-ranav/argparse
+  GIT_TAG v3.1
 )
 
-FetchContent_MakeAvailable(cli11)
-
-# Fetch CLI11 End
+FetchContent_MakeAvailable(argparse)
+# Fetch End
 
 # Add source to this project's executable.
 add_executable (HdrSwitcher 
 	"HdrSwitcher.cpp"
-	)
+	 "filters.h" "util.h" "winapi.h")
 
 set_property(TARGET HdrSwitcher PROPERTY CXX_STANDARD 20)
-target_link_libraries(HdrSwitcher PRIVATE CLI11::CLI11)
+target_link_libraries(HdrSwitcher PRIVATE argparse::argparse)
