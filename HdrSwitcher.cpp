@@ -6,6 +6,7 @@
 #include <source_location>
 #include <string>
 #include <vector>
+#include <ranges>
 
 #include <CLI/CLI.hpp>
 
@@ -187,6 +188,74 @@ void PrintDisplayMode() {
   std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR");
 }
 
+struct IFilter {
+  virtual ~IFilter() = default;
+  virtual vec<DISPLAYCONFIG_PATH_INFO> filter(
+      vec<DISPLAYCONFIG_PATH_INFO> displays) const = 0;
+};
+
+struct AllFilter final : IFilter {
+  vec<DISPLAYCONFIG_PATH_INFO> filter(
+      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
+    return displays;
+  }
+};
+
+struct IndexFilter final : IFilter {
+  size_t index;
+
+  vec<DISPLAYCONFIG_PATH_INFO> filter(
+      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
+    if (displays.size() < index) {
+      throw std::logic_error(format(
+          "Cannot find display with index {}. There are only {} displays",
+          index, displays.size()));
+    }
+
+    return {displays.at(index)};
+  }
+};
+
+struct TargetIdFilter final : IFilter {
+  uint32_t targetId;
+
+  vec<DISPLAYCONFIG_PATH_INFO> filter(
+      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
+    auto iter = std::ranges::find_if(
+        displays, [this](const DISPLAYCONFIG_PATH_INFO& display) {
+          return display.targetInfo.id == targetId;
+        });
+
+    if (displays.end() == iter) {
+      throw std::logic_error(format(
+          "Cannot find display with target id {}",
+          targetId));
+    }
+
+    return { *iter };
+  }
+};
+
+struct DisplayNameFilter final : IFilter {
+  std::wstring displayName;
+
+  vec<DISPLAYCONFIG_PATH_INFO> filter(
+      vec<DISPLAYCONFIG_PATH_INFO> displays) const {
+
+    auto view = displays | std::views::filter([this](const DISPLAYCONFIG_PATH_INFO& display) {
+          auto name = GetDisplayName(display.targetInfo.adapterId, display.targetInfo.id);
+          return name.monitorFriendlyDeviceName == displayName;
+        });
+
+    if (view.empty()) {
+      throw std::logic_error(
+          format("Cannot find display with name [{}]", displayName));
+    }
+
+    return vec<DISPLAYCONFIG_PATH_INFO>(view.begin(), view.end());
+  }
+};
+
 enum class Operation {
   enable,
   disable,
@@ -249,6 +318,11 @@ int main(int argc, char** argv) {
     app.add_subcommand("toggle", "Toggle HDR settings")->callback([] {
       ChangeHDR(Operation::toggle);
     });
+    app.add_flag("all", "Apply to all displays");
+    app.add_option("index", "Choose display by its index received from `list` command");
+    app.add_option("id", "Choose display by its id received from `list` command");
+    app.add_option("name",
+                   "Choose display by its name received from `list` command");
 
     CLI11_PARSE(app, argc, argv);
   } catch (const std::exception& e) {
