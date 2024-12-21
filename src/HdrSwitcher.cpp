@@ -31,6 +31,7 @@ void ListDisplays() {
   auto displays = Display::QueryAllDisplays();
   for (auto& display : displays) {
     PrintDisplayInfo(display);
+    std::wcout << L"\n";
   }
 }
 
@@ -69,8 +70,9 @@ void ChangeHDR(Operation oper, std::unique_ptr<IFilter> filter) {
     }
 
     std::wcout << L"New status    : "
-               << HdrStatusToString(display.getHdrStatus());
+               << HdrStatusToString(display.getHdrStatus()) << L"\n\n";
   }
+  std::wcout.flush();
 }
 
 void add_filters(argparse::ArgumentParser& app) {
