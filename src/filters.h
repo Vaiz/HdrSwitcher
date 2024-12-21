@@ -53,7 +53,7 @@ struct DisplayNameFilter final : IFilter {
       : displayName(to_upper(displayName)) {}
 
   vec<Display> Apply(vec<Display> displays) const {
-    auto view = displays | std::views::filter([this](Display& display) {
+    auto view = displays | std::views::filter([this](const Display& display) {
                   auto name = display.getName();
                   return to_upper(to_utf8(name)) == displayName;
                 });
