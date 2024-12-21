@@ -1,48 +1,44 @@
-﻿#include "filters.h"
+﻿#include "display.h"
+#include "filters.h"
 #include "util.h"
 #include "winapi.h"
 
 #include <argparse/argparse.hpp>
 
-void PrintDisplayInfo(LUID adapterId, UINT32 id) {
-  DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = GetDisplayName(adapterId, id);
+std::wstring_view HdrStatusToString(HdrStatus status) {
+  switch (status) {
+    case HdrStatus::NotSupported:
+      return L"SDR (HDR not supported)";
+    case HdrStatus::Enabled:
+      return L"HDR";
+    case HdrStatus::Disabled:
+      return L"SDR";
+  }
+  unreachable();
+}
 
-  // Find the adapter device name
-  DISPLAYCONFIG_ADAPTER_NAME adapterName = GetAdapterName(adapterId);
-
-  std::wcout << L"Target ID   : " << id << L"\n";
-  std::wcout << L"Target name : "
-             << (targetName.flags.friendlyNameFromEdid
-                     ? targetName.monitorFriendlyDeviceName
-                     : L"Unknown")
+void PrintDisplayInfo(Display& display) {
+  std::wcout << L"Target ID     : " << display.getTargetId() << L"\n";
+  std::wcout << L"Target name   : " << display.getName() << L"\n";
+  std::wcout << L"Adapter ID    : " << FormatLUID(display.getAdapterId())
              << L"\n";
-
-  std::wcout << L"Adapter ID  : " << FormatLUID(adapterId) << L"\n";
-  std::wcout << L"Adapter path: " << adapterName.adapterDevicePath << L"\n";
+  std::wcout << L"HDR status    : " << HdrStatusToString(display.getHdrStatus());
   std::wcout << std::endl;
 }
 
 void ListDisplays() {
-  const auto paths = QueryDisplayConfigImpl();
-
-  // For each active path
-  for (auto& path : paths) {
-    PrintDisplayInfo(path.targetInfo.adapterId, path.targetInfo.id);
+  auto displays = Display::QueryAllDisplays();
+  for (auto& display : displays) {
+    PrintDisplayInfo(display);
   }
 }
 
 void PrintDisplayMode(std::unique_ptr<IFilter> filter) {
-  auto pathArray = QueryDisplayConfigImpl();
-  pathArray = filter->Apply(pathArray);
+  auto displays = Display::QueryAllDisplays();
+  displays = filter->Apply(displays);
 
-  for (const auto& display : pathArray) {
-    LUID adapterId = display.targetInfo.adapterId;
-    UINT32 targetId = display.targetInfo.id;
-
-    // Get the current advanced color info of the display
-    auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
-
-    std::wcout << (getColorInfo.advancedColorEnabled ? "HDR" : "SDR") << std::endl;
+  for (const auto& display : displays) {
+    std::wcout << (display.isHdrEnabled() ? "HDR" : "SDR") << std::endl;
   }
 }
 
@@ -53,44 +49,26 @@ enum class Operation {
 };
 
 void ChangeHDR(Operation oper, std::unique_ptr<IFilter> filter) {
-  auto pathArray = QueryDisplayConfigImpl();
-  pathArray = filter->Apply(pathArray);
+  auto displays = Display::QueryAllDisplays();
+  displays = filter->Apply(displays);
 
-  for (const auto& display : pathArray) {
-    LUID adapterId = display.targetInfo.adapterId;
-    UINT32 targetId = display.targetInfo.id;
-    PrintDisplayInfo(adapterId, targetId);
+  for (auto& display : displays) {
+    PrintDisplayInfo(display);
 
-    // Get the current advanced color info of the display
-    auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
-
-    // Check if the display supports HDR
-    if (!getColorInfo.advancedColorSupported) {
-      throw std::runtime_error("The display does not support HDR");
+    switch (oper) {
+      case Operation::enable:
+        display.enableHdr();
+        break;
+      case Operation::disable:
+        display.disableHdr();
+        break;
+      case Operation::toggle:
+        display.toggleHdr();
+        break;
     }
 
-    bool enableAdvancedColor = [&] {
-      switch (oper) {
-        case Operation::enable:
-          return true;
-        case Operation::disable:
-          return false;
-        case Operation::toggle:
-          return getColorInfo.advancedColorEnabled == FALSE;
-      }
-      unreachable();
-    }();
-
-    // Set the advanced color state to enable/disable HDR
-    SetAdvancedColorInfo(adapterId, targetId, enableAdvancedColor);
-
-    if (enableAdvancedColor) {
-      std::wcout << L"HDR is enabled for display with id " << targetId
-                 << std::endl;
-    } else {
-      std::wcout << L"HDR is disabled for display with id " << targetId
-                 << std::endl;
-    }
+    std::wcout << L"New status    : "
+               << HdrStatusToString(display.getHdrStatus());
   }
 }
 

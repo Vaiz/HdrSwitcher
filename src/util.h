@@ -22,9 +22,9 @@ template <typename T>
 using vec = std::vector<T>;
 using std::format;
 
-std::string to_utf8(const wchar_t* wstr) {
+std::string to_utf8(std::wstring_view wstr) {
   std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.to_bytes(wstr);
+  return converter.to_bytes(wstr.data());
 }
 
 std::string to_upper(std::string str) {
