@@ -105,7 +105,11 @@ std::unique_ptr<IFilter> InitFilter(
 
 int main(int argc, char** argv) {
   try {
-    argparse::ArgumentParser program("HDRSwitcher", "1.2");
+    argparse::ArgumentParser program("HDRSwitcher", "1.3");
+    program.add_epilog(
+        "You can specify a monitor by using "
+        "`--all`, `--index`, `--id`, or `--name` argument after a command.\n"
+        "For more information, use `HDRSwitcher <command> --help`.");
 
     argparse::ArgumentParser list_command("list");
     list_command.add_description("List available displays");
