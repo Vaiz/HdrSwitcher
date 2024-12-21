@@ -22,7 +22,8 @@ void PrintDisplayInfo(Display& display) {
   std::wcout << L"Target name   : " << display.getName() << L"\n";
   std::wcout << L"Adapter ID    : " << FormatLUID(display.getAdapterId())
              << L"\n";
-  std::wcout << L"HDR status    : " << HdrStatusToString(display.getHdrStatus());
+  std::wcout << L"HDR status    : "
+             << HdrStatusToString(display.getHdrStatus());
   std::wcout << std::endl;
 }
 
