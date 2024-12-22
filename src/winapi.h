@@ -99,6 +99,23 @@ DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO GetAdvancedColorInfo(LUID adapterId,
   return colorInfo;
 }
 
+DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 GetAdvancedColorInfo2(LUID adapterId,
+                                                              UINT32 id) {
+  DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 colorInfo = {};
+  colorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2;
+  colorInfo.header.size = sizeof(colorInfo);
+  colorInfo.header.adapterId = adapterId;
+  colorInfo.header.id = id;
+  auto err = ::DisplayConfigGetDeviceInfo(
+      (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&colorInfo);
+  if (err != ERROR_SUCCESS) {
+    ThrowWinErr("DisplayConfigGetDeviceInfo failed with error. ",
+                HRESULT_FROM_WIN32(err));
+  }
+
+  return colorInfo;
+}
+
 void SetAdvancedColorInfo(LUID adapterId,
                           UINT32 id,
                           bool advancedColorEnabled) {

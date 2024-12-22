@@ -13,6 +13,8 @@ std::wstring_view HdrStatusToString(HdrStatus status) {
       return L"HDR";
     case HdrStatus::Disabled:
       return L"SDR";
+    case HdrStatus::Unknown:
+      return L"Unknown";
   }
   unreachable();
 }
