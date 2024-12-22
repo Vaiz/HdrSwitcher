@@ -91,8 +91,8 @@ class Display {
       } else {
         switch (getColorInfo.activeColorMode) {
           case DISPLAYCONFIG_ADVANCED_COLOR_MODE_SDR:
-            return HdrStatus::Disabled;
           case DISPLAYCONFIG_ADVANCED_COLOR_MODE_WCG:
+            return HdrStatus::Disabled;
           case DISPLAYCONFIG_ADVANCED_COLOR_MODE_HDR:
             return HdrStatus::Enabled;
           default:
