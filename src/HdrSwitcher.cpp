@@ -25,7 +25,6 @@ void PrintDisplayInfo(Display& display) {
   std::println("Target name   : {}", display.getName());
   std::println("Adapter ID    : {}", FormatLUID(display.getAdapterId()));
   std::println("HDR status    : {}", HdrStatusToString(display.getHdrStatus()));
-  std::cout << std::endl;
 }
 
 void ListDisplays() {
