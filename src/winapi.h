@@ -92,7 +92,7 @@ DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO GetAdvancedColorInfo(LUID adapterId,
   auto err = ::DisplayConfigGetDeviceInfo(
       (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&colorInfo);
   if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigGetDeviceInfo failed with error. ",
+    ThrowWinErr("DisplayConfigGetDeviceInfo returned an error",
                 HRESULT_FROM_WIN32(err));
   }
 
@@ -109,7 +109,7 @@ DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 GetAdvancedColorInfo2(LUID adapterId,
   auto err = ::DisplayConfigGetDeviceInfo(
       (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&colorInfo);
   if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigGetDeviceInfo failed with error. ",
+    ThrowWinErr("DisplayConfigGetDeviceInfo returned an error",
                 HRESULT_FROM_WIN32(err));
   }
 
@@ -130,6 +130,6 @@ void SetAdvancedColorInfo(LUID adapterId,
   auto err = ::DisplayConfigSetDeviceInfo(
       (DISPLAYCONFIG_DEVICE_INFO_HEADER*)&setColorState);
   if (err != ERROR_SUCCESS) {
-    ThrowWinErr("DisplayConfigSetDeviceInfo failed with error", err);
+    ThrowWinErr("DisplayConfigSetDeviceInfo returned an error", err);
   }
 }
