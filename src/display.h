@@ -89,6 +89,7 @@ class Display {
     }
   }
 
+  // This API is not supported in older versions of Windows.
   std::optional<HdrStatus> tryGetAdvancedColorInfo2() {
     dbg("Calling GetAdvancedColorInfo2(_, {})", targetId);
     try {

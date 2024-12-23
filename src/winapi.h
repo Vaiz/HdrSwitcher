@@ -99,6 +99,7 @@ DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO GetAdvancedColorInfo(LUID adapterId,
   return colorInfo;
 }
 
+// DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2 is available since Windows 10.0.26100.0
 DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 GetAdvancedColorInfo2(LUID adapterId,
                                                               UINT32 id) {
   DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 colorInfo = {};
