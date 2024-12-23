@@ -6,6 +6,7 @@
 #include <exception>
 #include <format>
 #include <iostream>
+#include <print>
 #include <ranges>
 #include <source_location>
 #include <string>
@@ -48,6 +49,6 @@ std::string to_upper(std::string str) {
   __assume(false);
 }
 
-std::wstring FormatLUID(LUID luid) {
-  return format(L"{:016x}-{:08x}", luid.HighPart, luid.LowPart);
+std::string FormatLUID(LUID luid) {
+  return format("{:016x}-{:08x}", luid.HighPart, luid.LowPart);
 }

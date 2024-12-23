@@ -13,7 +13,7 @@ class Display {
   LUID adapterId;
   std::uint32_t targetId;
   HdrStatus hdrStatus;
-  std::wstring name;
+  std::string name;
 
  public:
   Display(const DISPLAYCONFIG_PATH_INFO& displayInfo)
@@ -23,11 +23,11 @@ class Display {
 
     auto targetName = GetDisplayName(adapterId, targetId);
     name = (targetName.flags.friendlyNameFromEdid
-                ? targetName.monitorFriendlyDeviceName
-                : L"Unknown");
+                ? to_utf8(targetName.monitorFriendlyDeviceName)
+                : "Unknown");
   }
 
-  const std::wstring& getName() const { return name; }
+  const std::string& getName() const { return name; }
   const std::uint32_t getTargetId() const { return targetId; }
   const LUID getAdapterId() const { return adapterId; }
 
