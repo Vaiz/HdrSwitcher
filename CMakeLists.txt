@@ -28,7 +28,7 @@ FetchContent_MakeAvailable(argparse)
 # Add source to this project's executable.
 add_executable (HdrSwitcher 
 	"src/HdrSwitcher.cpp"
-	"src/filters.h" "src/util.h" "src/winapi.h" "src/display.h")
+	"src/filters.h" "src/util.h" "src/winapi.h" "src/display.h" "src/dbg.h")
 
 set_property(TARGET HdrSwitcher PROPERTY CXX_STANDARD 23)
 target_link_libraries(HdrSwitcher PRIVATE argparse::argparse)

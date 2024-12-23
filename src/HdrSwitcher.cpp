@@ -13,6 +13,8 @@ std::wstring_view HdrStatusToString(HdrStatus status) {
       return L"HDR";
     case HdrStatus::Disabled:
       return L"SDR";
+    case HdrStatus::Unknown:
+      return L"Unknown";
   }
   unreachable();
 }
@@ -113,6 +115,11 @@ int main(int argc, char** argv) {
         "`--all`, `--index`, `--id`, or `--name` argument after a command.\n"
         "For more information, use `HDRSwitcher <command> --help`.");
 
+    program.add_argument("--debug")
+        .help("Enables debug output")
+        .default_value(false)
+        .implicit_value(true);
+
     argparse::ArgumentParser list_command("list");
     list_command.add_description("List available displays");
     program.add_subparser(list_command);
@@ -138,6 +145,10 @@ int main(int argc, char** argv) {
     program.add_subparser(toggle_command);
 
     program.parse_args(argc, argv);
+
+    if (program.is_used("debug")) {
+      EnableDebugOutput();
+    }
 
     if (program.is_subcommand_used(list_command)) {
       ListDisplays();
