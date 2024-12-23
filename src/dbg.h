@@ -1,5 +1,4 @@
 #pragma once
-#include <print>
 
 static bool IsDebugOutputEnabled = false;
 

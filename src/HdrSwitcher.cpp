@@ -1,39 +1,38 @@
-﻿#include "display.h"
+﻿#include "util.h"
+
+#include "display.h"
 #include "filters.h"
-#include "util.h"
 #include "winapi.h"
 
 #include <argparse/argparse.hpp>
 
-std::wstring_view HdrStatusToString(HdrStatus status) {
+std::string_view HdrStatusToString(HdrStatus status) {
   switch (status) {
     case HdrStatus::NotSupported:
-      return L"SDR (HDR not supported)";
+      return "SDR (HDR not supported)";
     case HdrStatus::Enabled:
-      return L"HDR";
+      return "HDR";
     case HdrStatus::Disabled:
-      return L"SDR";
+      return "SDR";
     case HdrStatus::Unknown:
-      return L"Unknown";
+      return "Unknown";
   }
   unreachable();
 }
 
 void PrintDisplayInfo(Display& display) {
-  std::wcout << L"Target ID     : " << display.getTargetId() << L"\n";
-  std::wcout << L"Target name   : " << display.getName() << L"\n";
-  std::wcout << L"Adapter ID    : " << FormatLUID(display.getAdapterId())
-             << L"\n";
-  std::wcout << L"HDR status    : "
-             << HdrStatusToString(display.getHdrStatus());
-  std::wcout << std::endl;
+  std::println("Target ID     : {}", display.getTargetId());
+  std::println("Target name   : {}", display.getName());
+  std::println("Adapter ID    : {}", FormatLUID(display.getAdapterId()));
+  std::println("HDR status    : {}", HdrStatusToString(display.getHdrStatus()));
+  std::cout << std::endl;
 }
 
 void ListDisplays() {
   auto displays = Display::QueryAllDisplays();
   for (auto& display : displays) {
     PrintDisplayInfo(display);
-    std::wcout << L"\n";
+    std::println();
   }
 }
 
@@ -42,7 +41,7 @@ void PrintDisplayMode(std::unique_ptr<IFilter> filter) {
   displays = filter->Apply(displays);
 
   for (const auto& display : displays) {
-    std::wcout << (display.isHdrEnabled() ? "HDR" : "SDR") << std::endl;
+    std::cout << (display.isHdrEnabled() ? "HDR" : "SDR") << "\n";
   }
 }
 
@@ -71,8 +70,9 @@ void ChangeHDR(Operation oper, std::unique_ptr<IFilter> filter) {
         break;
     }
 
-    std::wcout << L"New status    : "
-               << HdrStatusToString(display.getHdrStatus()) << L"\n\n";
+    std::println("New status    : {}",
+                 HdrStatusToString(display.getHdrStatus()));
+    std::println();
   }
   std::wcout.flush();
 }
