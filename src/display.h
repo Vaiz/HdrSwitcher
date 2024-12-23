@@ -1,4 +1,5 @@
 #pragma once
+#include "dbg.h"
 #include "winapi.h"
 
 enum class HdrStatus {
@@ -69,7 +70,16 @@ class Display {
     }
 
     UseGetAdvancedColorInfo2 = false;
+
+    dbg("Calling GetAdvancedColorInfo(_, {})", targetId);
+
     auto getColorInfo = GetAdvancedColorInfo(adapterId, targetId);
+
+    dbg("  getColorInfo.advancedColorSupported: {}",
+        getColorInfo.advancedColorSupported == 1);
+    dbg("  getColorInfo.advancedColorEnabled: {}",
+        (int)getColorInfo.advancedColorEnabled);
+
     if (!getColorInfo.advancedColorSupported) {
       hdrStatus = HdrStatus::NotSupported;
     } else if (getColorInfo.advancedColorEnabled) {
@@ -80,12 +90,13 @@ class Display {
   }
 
   std::optional<HdrStatus> tryGetAdvancedColorInfo2() {
-    std::cout << "[DBG] Calling "
-                 "DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO_2...\n";
+    dbg("Calling GetAdvancedColorInfo2(_, {})", targetId);
     try {
       auto getColorInfo = GetAdvancedColorInfo2(adapterId, targetId);
-      std::cout << "[DBG]  getColorInfo.activeColorMode: "
-                << getColorInfo.activeColorMode << "\n";
+      dbg("  getColorInfo.highDynamicRangeSupported: {}",
+          getColorInfo.highDynamicRangeSupported == 1);
+      dbg("  getColorInfo.activeColorMode: {}",
+          (int)getColorInfo.activeColorMode);
       if (!getColorInfo.highDynamicRangeSupported) {
         return HdrStatus::NotSupported;
       } else {
@@ -100,7 +111,7 @@ class Display {
         }
       }
     } catch (const std::exception& e) {
-      std::cout << "[DBG] exception: " << e.what() << "\n";
+      dbg("GetAdvancedColorInfo2 returned an error. {}", e.what());
     }
     return {};
   }
