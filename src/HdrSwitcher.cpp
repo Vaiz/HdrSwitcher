@@ -2,6 +2,7 @@
 
 #include "display.h"
 #include "filters.h"
+#include "version.h"
 #include "winapi.h"
 
 #include <argparse/argparse.hpp>
@@ -108,7 +109,7 @@ std::unique_ptr<IFilter> InitFilter(
 
 int main(int argc, char** argv) {
   try {
-    argparse::ArgumentParser program("HDRSwitcher", "1.3");
+    argparse::ArgumentParser program("HDRSwitcher", HDR_SWITCHER_VERSION_STR);
     program.add_epilog(
         "You can specify a monitor by using "
         "`--all`, `--index`, `--id`, or `--name` argument after a command.\n"
