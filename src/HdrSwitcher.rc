@@ -27,7 +27,7 @@ BEGIN
     BEGIN
         BLOCK "040904B0"
         BEGIN
-            VALUE "CompanyName",      "Vaiz@github"
+            VALUE "CompanyName",      ""
             VALUE "FileDescription",  "HdrSwitcher"
             VALUE "FileVersion",      VER_FILEVERSION_STR
             VALUE "InternalName",     "HdrSwitcher"
